@@ -28,6 +28,7 @@ openMod <- function(mod, dir, varName, years, modScale, ..., levels = 1, layer =
                 if (any(extent != c(-180, 180, -90, 90))) dat = crop(dat, extent)
                 return(dat)
             }
+            
             if (is.list(levels)) dat = layer.apply(levels, openLvs) else dat = openLvs(levels)
             
             return(dat)

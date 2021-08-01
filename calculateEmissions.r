@@ -5,7 +5,8 @@ dir = 'data/modInputs/'
 obsFile = 'obs_fireEmissions.nc'
 
 years = 2003:2019
-nms =  paste(rep(years, each = 12), 1:12, 1, sep = '-')
+nms =  paste(rep(years, each = 12), 1:12, c(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31),
+             sep = '-')
 
 obs = brick(paste0(dir, obsFile))
 names(obs) = nms

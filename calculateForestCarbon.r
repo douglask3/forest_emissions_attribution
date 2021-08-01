@@ -23,40 +23,8 @@ obs = brickDIR(obsFile)
 mods = lapply(modFiles_opt, brickDIR)
 mask = which(!is.na(sum(obs + mods[[1]][[1]]))[])
 
-Mobs = mean(obs[[-1]])
-Mobs = Mobs[!is.na(Mobs)]
-Mobs = Mobs[Mobs>10 & Mobs < 400]
-
-png("figs/obsCarbon.png", height = 5.5, width = 5, res = 300, units = 'in')
-layout(matrix(1:5, nrow = 5), heights = c(2.5, 1, 1, 1, 0.3))
-par(mar = c(5.5, 0, 0, 0), oma = rep(0.5, 4))
-
-mc = max(hist(Mobs, 100, yaxt = 'n', xlab = '', ylab = '', main = '')$counts)
-Cobs = knots(ecdf(Mobs))
-y = seq(0, mc, length.out = length(Cobs))
-
-lines(Cobs, y, lwd = 2)
-minP = Cobs[which.max(diff(Cobs[0:300000]))]
-lines(c(minP, minP), c(0, 9E9), lty = 2)
-mtext.units(side = 1, line = 3, 'Above ground carbon (kg/~m2~)')
-
-cols = c('#f7fcf5','#e5f5e0','#c7e9c0','#a1d99b','#74c476','#41ab5d','#238b45',
-         '#006d2c','#00441b')
-
-limits =  c(0, 10, 20, 50, 100, 50, 200, 250, 300)
-plotFUN <- function(r, title) {
-    plotStandardMap(r, cols = cols, limits = limits)
-    contour(r, levels = minP, drawlabels=FALSE, add = TRUE, col = '#c51b7d')
-    mtext(side = 3, title)
-}
-par(mar = rep(0, 4))
-mapply(plotFUN, layers2list(obs), obsYrs)
-StandardLegend(cols, limits, obs[[1]], extend_max = TRUE, add = FALSE)
-dev.off()
-
 correct = correct0 =  matrix(0, ncol = tbase, nrow = nlayers(mods[[1]]))
 CorrectForGridCell <- function(i, id, modVeg, modDPM, returnRes = TRUE) {
-    
     idf = tbase*ceiling(id/tbase)
     idi = id - idf + tbase
     
@@ -115,16 +83,18 @@ out = mapply(CorrectForGridCell, mask[index], index, MoreArgs = list(mods[[1]]))
 out = out[!sapply(out, is.null)]
 corrV= do.call(cbind, out)
 
-#corrected = mods[[1]][[1]]
-#corrected[!is.na(corrected)] = 0
-corrected = log(mods[[1]][[yrC[1]]]) - log(obs[[1]])
-corrected[corrected < -20] = -20
-     
+corrected = mods[[1]][[1]]
+corrected[!is.na(corrected)] = 0
+#corrected = log(mods[[1]][[yrC[1]]]) - log(obs[[1]])
+#corrected[corrected < -20] = -20
 
 rasterizeCorrection <- function(i) {
+    tfile = paste0("temp/calForestCorrecetedVar-", i, ".nc")
+    if (file.exists(tfile)) return(raster(tfile))
     corrected[mask[index]] = as.numeric(corrV[i,])
     corrected[corrected>200] = 200 
-    corrected
+    corrected = writeRaster(corrected, file = tfile)
+    return(corrected)
 }
 
 corrected = layer.apply(1:nrow(corrV), rasterizeCorrection)
@@ -147,14 +117,16 @@ corrTotCarbon <- function(i, id = 1:length(mods), mods, nme) {
     return(totCarbon)
 }
 
-#modss = lapply(modFile_correct, lapply, brickDIR)
-
 forMods <- function(mods, nm) {
     outs = lapply(1:3,
                  function(i) layer.apply(1:nlayers(corrected), corrTotCarbon, i, mods, nm))
     out3 = layer.apply(1:nlayers(corrected), corrTotCarbon, 1:3, mods, nm)
+    nms = paste(modYrs, 6, 15,  sep = '-')
+    out3 = setZ(out3, as.Date(nms), 'Date')    
     writeRaster.gitInfo(out3, paste0("outputs/ForestCarbon-", nm, '.nc'), overwrite = TRUE)
     return(out3)
 }
+
+modss = lapply(modFile_correct, lapply, brickDIR)
 outs = mapply(forMods, modss, c("withHumans", "noHumans"))
 

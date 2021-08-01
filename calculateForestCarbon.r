@@ -153,7 +153,7 @@ forMods <- function(mods, nm) {
     outs = lapply(1:3,
                  function(i) layer.apply(1:nlayers(corrected), corrTotCarbon, i, mods, nm))
     out3 = layer.apply(1:nlayers(corrected), corrTotCarbon, 1:3, mods, nm)
-    writeRaster.gitInfo(out3, paste0("outputs/ForestCarbon-", nm, '.nc'))
+    writeRaster.gitInfo(out3, paste0("outputs/ForestCarbon-", nm, '.nc', overwrite = TRUE))
     return(out3)
 }
 outs = mapply(forMods, modss, c("withHumans", "noHumans"))

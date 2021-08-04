@@ -43,12 +43,15 @@ convertVar <- function(var) {
 
     forFile <- function(file) {
         dat = layer.apply(1:12, openHDFandConvert2Nc, var, file)
-        if (abs(max.raster(dat) - 1) < 0.00001) dat = mean(dat) else dat = sum(dat)
+        #if (abs(max.raster(dat) - 1) < 0.00001) dat = mean(dat) else dat = sum(dat)
         return(dat)
     }
     dat = layer.apply(files, forFile)	
-    names(dat) = sapply(files, function(file) substr(strsplit(file, '1s_')[[1]][2], 1, 4))
     
+    yrs =  sapply(files, function(file) substr(strsplit(file, '1s_')[[1]][2], 1, 4))
+    mnths = c(paste0('0', 1:9), 10:12)
+    names(dat) = paste0(mnths, '-', rep(yrs, each = 12))
+   
     names(fileDate) = paste(names(fileDate), 'obtained on')
 				 
     comment = list('Data from GFEDv4.1s' = 	'Raw data file list on data/gfed/file_list.txt',
@@ -58,6 +61,7 @@ convertVar <- function(var) {
     
     writeRaster.gitInfo.time(dat, fname,
                         comment = comment, overwrite = TRUE)
+    # browser()
 }
 
 varnames = c("C_AGRI", "C_BORF", "C_DEFO", "C_PEAT", "C_SAVA", "C_TEMF", "DM_AGRI", "DM_BORF",

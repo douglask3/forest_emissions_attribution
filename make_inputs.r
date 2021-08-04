@@ -80,12 +80,7 @@ forVarMod <- function(var, levels, vname, scale, correct = NULL, mod, name) {
         dat  = lapply(levels, forLevel, var)
         frac = lapply(levels, forLevel, modFacVar)
         dat = mapply('*', dat, frac)
-
-        sumList.raster <- function(rs) {
-            r = rs[[1]]
-            for (i in rs[-1]) r = r + i
-            r
-        }
+        
         dat = sumList.raster(dat)
         if (!is.null(correct)) {
             fracS = sumList.raster(frac)
@@ -99,6 +94,7 @@ forVarMod <- function(var, levels, vname, scale, correct = NULL, mod, name) {
     dat = raster::resample(dat, gfas[[1]])
     if (nlayers(dat) == length(mod_years)) {
         names(dat) = mod_years
+        setZ(dat, as.Date(paste(mod_years, 6, 15, sep = '-')), 'Date')   
     } else {
         mnths = c(paste0('0', 1:9), 10:12)    
         names(dat) =  paste0(mnths, '-', rep(mod_years, each = 12))
@@ -106,7 +102,7 @@ forVarMod <- function(var, levels, vname, scale, correct = NULL, mod, name) {
     fname = paste0(levels, collapse = '-')
     fname = paste0(out_dir, "mod_", name, '_', vname, '_', var, '_', fname, ".nc")
     print(fname)
-    dat = writeRaster(dat, fname, overwrite = TRUE)
+    dat = writeRaster.gitInfo(dat, fname, overwrite = TRUE)
 }
 
 RunJules <- function() 

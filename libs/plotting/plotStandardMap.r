@@ -2,7 +2,7 @@ source("libs/return_multiple_from_functions.r")
 library(mapproj)
 
 plotStandardMap <- function(x, txt = '', limits, cols, e = NULL, recrop_e = TRUE, 
-                            y_range = c(-35, 35), limits_error = c(0.05, 0.1),
+                            y_range = c(-35, 35), x_range = c(-125, 155), limits_error = c(0.05, 0.1),
                             ePatternRes = 15,  ePatternThick = 0.6, ...) {
     if (nlayers(x) == 1) x = x[[1]]
     mask = raster('data/seamask.nc')
@@ -17,7 +17,8 @@ plotStandardMap <- function(x, txt = '', limits, cols, e = NULL, recrop_e = TRUE
     if(!is.null(e)) e[mask != 2] = NaN
     
     FUN <- function(...) {
-        plot_raster_from_raster(x, y_range = y_range, limits = limits, cols = cols,
+        plot_raster_from_raster(x, x_range = x_range, 
+                                y_range = y_range, limits = limits, cols = cols,
                                 transpose = FALSE, srt = 0, add_legend = FALSE,
                                 quick = TRUE, e = e, interior = FALSE,
                                 ePatternRes = ePatternRes, ePatternThick = ePatternThick,
@@ -28,12 +29,18 @@ plotStandardMap <- function(x, txt = '', limits, cols, e = NULL, recrop_e = TRUE
     addCoastlineAndIce2map()    
     
     FUN(add = TRUE, ...)
-    plot_raster_from_raster(mask, y_range = c(-60, 90), limits = c(0.5),
+    plot_raster_from_raster(mask, x_range = x_range, 
+                            y_range = y_range, limits = c(0.5),
                             cols = c("white", make.transparent("white", 1)),
                             quick = TRUE, interior = FALSE, add_legend = FALSE,
                             coast.lwd = NULL, add = TRUE, ...)
-    #contour(mask, add = TRUE, drawlabels = FALSE, lwd = 0.5)
+    cntr = raster('outputs/HighlightCountries.nc')
     
+    for (i in 1:5) 
+        contour(cntr, add = TRUE, drawlabels = FALSE, lwd = 0.5, levels = i - 0.5)
+    #contour(mask, add = TRUE, drawlabels = FALSE, lwd = 0.5)
+    for (i in c(-1, 1))
+        polygon(c(-180, 180, 180, -180), i*c(35, 35, 90, 90), col = 'white', border = 'white')
     
     mtext(txt, side = 2, line = -2, adj = 0.1)
 }

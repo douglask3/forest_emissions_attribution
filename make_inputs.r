@@ -5,6 +5,8 @@ years = 2003:2019
 mod_years = 2000:2019
 out_dir = "data/modInputs/"
 
+TC = raster('../jules_benchmarking/data/TreeCover.nc')
+TC = convert_pacific_centric_2_regular(TC)
 #############
 ## gfas    ##
 #############
@@ -22,6 +24,7 @@ names(gfas) = nms
 fname = paste0(out_dir, 'obs_fireEmissions.nc')
 gfas = writeRaster(gfas, fname, overwrite = TRUE)
 }
+
 ###########
 ## GFED  ##
 ###########
@@ -64,12 +67,35 @@ dat = writeRaster(dat, fname, overwrite = TRUE)
 ###########
 jules_dir = "/hpc/data/d05/cburton/jules_output/"
 jules_run = c(withHuman = "u-cb972", noHuman = "u-cb972_NatIgn")
-
+modFacVar = 'frac'
 sec2year = 60*60*24*365
-jules_vars_scale = c(sec2year, sec2year, sec2year, 1, 1)
 
-forVarMod <- function(var, vname, scale, mod, name) {    
-    dat = openMod(mod, jules_dir, var, mod_years, scale, stream = jules_pattern)
+forVarMod <- function(var, levels, vname, scale, correct = NULL, mod, name) {   
+    forLevel <- function(level, v) {
+        print(level)
+        openMod(mod, jules_dir, v, mod_years, scale, levels = level, stream = jules_pattern)
+    }
+    if (length(levels) > 1) {    
+        
+        dat  = lapply(levels, forLevel, var)
+        frac = lapply(levels, forLevel, modFacVar)
+        dat = mapply('*', dat, frac)
+
+        sumList.raster <- function(rs) {
+            r = rs[[1]]
+            for (i in rs[-1]) r = r + i
+            r
+        }
+        dat = sumList.raster(dat)
+        if (!is.null(correct)) {
+            fracS = sumList.raster(frac)
+            if (nlayers(correct) == 1) fracS = mean(fracS)
+            dat = dat * correct/fracS
+        }
+    } else {
+        dat = forLevel(levels, var)
+    }
+
     dat = raster::resample(dat, gfas[[1]])
     if (nlayers(dat) == length(mod_years)) {
         names(dat) = mod_years
@@ -77,24 +103,39 @@ forVarMod <- function(var, vname, scale, mod, name) {
         mnths = c(paste0('0', 1:9), 10:12)    
         names(dat) =  paste0(mnths, '-', rep(mod_years, each = 12))
     }
-    
-    fname = paste0(out_dir, "mod_", name, '_', vname, '_', var, ".nc")
+    fname = paste0(levels, collapse = '-')
+    fname = paste0(out_dir, "mod_", name, '_', vname, '_', var, '_', fname, ".nc")
     print(fname)
     dat = writeRaster(dat, fname, overwrite = TRUE)
 }
 
 RunJules <- function() 
-    mapply(function(i, j) mapply(forVarMod, jules_vars, names, jules_vars_scale, i, j), 
-          jules_run, names(jules_run))
-
+    mapply(function(i, j) mapply(forVarMod, jules_vars, levels, names, jules_vars_scale, 
+                                 corrects, i, j), 
+           jules_run, names(jules_run))
 
 jules_pattern = 'S2.Annual'
+
+jules_vars = c("c_veg", "c_veg", "cs_gb")
+names = c("ForestCarbon", "NoneForestCarbon", "deadCarbon")
+jules_vars_scale = c(1, 1, 1)
+levels = list(1:5, 7:13, 1)
+corrects = list(TC, 1 - TC, NULL)
+RunJules()
+
+
+
 jules_vars = c("cs", "cs_gb", "cv")
 names = c("DPM", "deadCarbon", "vegCarbon")
+jules_vars_scale = c(1, 1, 1)
+levels = c(1, 1, 1)
+corrects = NULL
 RunJules()
 
 jules_pattern = 'S3.ilamb'
 jules_vars = c("veg_c_fire_emission_gb", "burnt_carbon_dpm", "burnt_carbon_rpm")
+jules_vars_scale = c(sec2year, sec2year, sec2year)
+levels = c(1, 1, 1)
 names = jules_vars
 
 

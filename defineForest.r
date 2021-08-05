@@ -1,4 +1,19 @@
 source("cfg.r")
+library(rgdal)
+##########
+
+FC_file = 'outputs/ForestCarbon-withHumans.nc'
+eco_file = 'data/raw/TerrestrialEcos/'
+
+FC = brick(FC_file)
+
+ecos = readOGR(eco_file)
+ecor = rasterize(ecos, FC[[1]], "BIOME")
+
+forestBiome = (ecor<7) | (ecor ==8)
+writeRaster.gitInfo(ecor, file = 'outputs/ecosystemBiomes.nc', overwrite = TRUE)
+writeRaster.gitInfo(forestBiome, file = 'outputs/forestBiome.nc', overwrite = TRUE)
+
 
 obs = brick('data/modInputs/obs_ABG_carbon.nc')
 
@@ -8,8 +23,8 @@ Mobs = mean(obs[[-1]])
 Mobs = Mobs[!is.na(Mobs)]
 Mobs = Mobs[Mobs>10 & Mobs < 400]
 
-png("figs/obsCarbon.png", height = 5.5, width = 5, res = 300, units = 'in')
-    layout(matrix(1:5, nrow = 5), heights = c(2.5, 1, 1, 1, 0.3))
+png("figs/obsCarbon.png", height = 5.5*7/7, width = 5, res = 300, units = 'in')
+    layout(matrix(1:5, nrow = 5), heights = c(2.5, 1, 1, 1, 0.3, 1))
     par(mar = c(5.5, 0, 0, 0), oma = rep(0.5, 4))
 
     mc = max(hist(Mobs, 100, yaxt = 'n', xlab = '', ylab = '', main = '')$counts)
@@ -28,15 +43,18 @@ png("figs/obsCarbon.png", height = 5.5, width = 5, res = 300, units = 'in')
     plotFUN <- function(r, title) {
         plotStandardMap(r, cols = cols, limits = limits)
         contour(r, levels = minP, drawlabels=FALSE, add = TRUE, col = '#c51b7d')
+       
         mtext(side = 3, title)
     }
     par(mar = rep(0, 4))
     mapply(plotFUN, layers2list(obs), obsYrs)
     StandardLegend(cols, limits, obs[[1]], extend_max = TRUE, add = FALSE)
+    plotStandardMap(forestBiome, cols = c("white", "green"), limits = c(0.5))
+    legend('bottomleft', bty = 'n', 'Forest', col = 'green', pch = 19, pt.cex = 2.5)
 dev.off()
 
 revN = gitVersionNumber()
-save(minP, revN, file = 'outputs/minP.Rd')
+save(minP, revN, forestBiome, file = 'outputs/forestDef.Rd')
 
 
 

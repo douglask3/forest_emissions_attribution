@@ -37,7 +37,7 @@ runningAv.raster <- function(dat, N = 12, aFUN = function(i) sum(i), outFile = N
     }
     
     outs = layer.apply(N:nlayers(dat), FUN) # 
-    names(outs) = names(dat)[N:nlayers(dat)] #
+    names(outs) = names(dat)[(N-round(N/2)):(nlayers(dat)-round(N/2))] #
     if (!is.null(outFile)) {
         outs = writeRaster.gitInfo.time(outs, outFile)
         #outs = writeRaster.gitInfo(outs, file = file, overwrite = TRUE, zname = 'time', zunit = 'month')

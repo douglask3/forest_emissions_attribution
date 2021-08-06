@@ -112,11 +112,11 @@ RunJules <- function()
 
 jules_pattern = 'S2.Annual'
 
-jules_vars = c("c_veg", "c_veg", "cs_gb")
-names = c("ForestCarbon", "NoneForestCarbon", "deadCarbon")
-jules_vars_scale = c(1, 1, 1)
-levels = list(1:5, 7:13, 1)
-corrects = list(TC, 1 - TC, NULL)
+jules_vars = c("c_veg", "c_veg", "cs_gb", "cs")
+names = c("ForestCarbon", "NoneForestCarbon", "deadCarbon", "DPM")
+jules_vars_scale = c(1, 1, 1, 1)
+levels = list(1:5, 7:13, 1, 1)
+corrects = list(TC, 1 - TC, NULL, NULL)
 RunJules()
 
 
@@ -125,7 +125,7 @@ jules_vars = c("cs", "cs_gb", "cv")
 names = c("DPM", "deadCarbon", "vegCarbon")
 jules_vars_scale = c(1, 1, 1)
 levels = c(1, 1, 1)
-corrects = NULL
+corrects = c(NULL)
 RunJules()
 
 jules_pattern = 'S3.ilamb'

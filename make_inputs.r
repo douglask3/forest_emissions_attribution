@@ -1,31 +1,36 @@
 source("cfg.r")
 
 extent = c(-180, 180, -35, 35)
-years = 2003:2019
+years = 2003:2020
 mod_years = 2000:2019
 out_dir = "data/modInputs/"
 
 TC = raster('../jules_benchmarking/data/TreeCover.nc')
 TC = convert_pacific_centric_2_regular(TC)
+
+grab_cache = TRUE
+
+
+gfas_fname = paste0(c(out_dir, 'obs_fireEmissions-', range(years), '.nc'), collapse = '')
+file_emissions_gfas = 'data/raw/cams_gfas_co2fire_2003-2020-timestep_monthly-.nc'
 #############
 ## gfas    ##
 #############
-if (T) {
-file_emissions_gfas = 'data/raw/cams_gfas_co2fire_2003-2020-timestep_monthly-.nc'
+if (file.exists(gfas_fname) && grab_cache) {
+    gfas = brick(gfas_fname) 
+} else {
+    print("processing GFAS")
+    gfas = brick(file_emissions_gfas)
 
-gfas = brick(file_emissions_gfas)
+    memSafeFile.initialise("temp/")
+    gfas = gfas0 = layer.apply(gfas, memSafeFile.crop, extent, overwrite = TRUE)
 
-memSafeFile.initialise("temp/")
-gfas = gfas0 = layer.apply(gfas, memSafeFile.crop, extent, overwrite = TRUE)
+    nms =  as.Date(paste(rep(years, 12), 1:12, 15, sep = '-'))
+    gfas = gfas[[1:length(nms)]]
+    gfas = setZ(gfas, nms, 'Date')
 
-nms =  as.Date(paste(rep(years, 12), 1:12, 15, sep = '-'))
-gfas = gfas[[1:length(nms)]]
-gfas = setZ(gfas, nms, 'Date')
-
-fname = paste0(out_dir, 'obs_fireEmissions.nc')
-gfas = writeRaster.gitInfo(gfas, fname, overwrite = TRUE)
+    gfas = writeRaster.gitInfo(gfas, gfas_fname, overwrite = TRUE)
 }
-
 ###########
 ## GFED  ##
 ###########
@@ -57,8 +62,11 @@ files = list.files(dir, full.names = TRUE)
 dat = stack(files)
 dat = raster::resample(dat, gfas[[1]])
 yr = sapply(files, function(i) strsplit(strsplit(i, '100m-')[[1]][2], '-')[[1]][1])
-names(dat) = paste0('X', yr)
+
+nms = paste(yr, 6, 15, sep  = '-')
 dat[dat<0] = 0
+
+setZ(dat, nms, 'Date')
 
 fname = paste0(out_dir, 'obs_ABG_carbon.nc')
 dat = writeRaster(dat, fname, overwrite = TRUE)

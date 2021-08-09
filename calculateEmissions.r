@@ -2,14 +2,15 @@ source("cfg.r")
 
 dir = 'data/modInputs/'
 
-obsFile = 'obs_fireEmissions.nc'
+obsFile = 'obs_fireEmissions-20032020.nc'
 
 years = 2003:2019
 nms =  paste(rep(years, each = 12), 1:12, c(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31),
              sep = '-')
 
 obs = brick(paste0(dir, obsFile))
-names(obs) = nms
+#browser()
+#names(obs) = nms
 
 
 writeRaster.gitInfo.time <- function(r, file, ...) {
@@ -40,7 +41,6 @@ runningAv.raster <- function(dat, N = 12, aFUN = function(i) sum(i), outFile = N
     names(outs) = names(dat)[(N-round(N/2)):(nlayers(dat)-round(N/2))] #
     if (!is.null(outFile)) {
         outs = writeRaster.gitInfo.time(outs, outFile)
-        #outs = writeRaster.gitInfo(outs, file = file, overwrite = TRUE, zname = 'time', zunit = 'month')
     
         memSafeFile.remove()
     }

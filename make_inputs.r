@@ -8,7 +8,7 @@ out_dir = "data/modInputs/"
 TC = raster('../jules_benchmarking/data/TreeCover.nc')
 TC = convert_pacific_centric_2_regular(TC)
 
-grab_cache = TRUE
+grab_cache = FALSE
 
 
 gfas_fname = paste0(c(out_dir, 'obs_fireEmissions-', range(years), '.nc'), collapse = '')
@@ -25,7 +25,7 @@ if (file.exists(gfas_fname) && grab_cache) {
     memSafeFile.initialise("temp/")
     gfas = gfas0 = layer.apply(gfas, memSafeFile.crop, extent, overwrite = TRUE)
 
-    nms =  as.Date(paste(rep(years, 12), 1:12, 15, sep = '-'))
+    nms =  as.Date(paste(rep(years, each = 12), 1:12, 15, sep = '-'))
     gfas = gfas[[1:length(nms)]]
     gfas = setZ(gfas, nms, 'Date')
 

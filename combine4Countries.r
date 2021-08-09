@@ -60,7 +60,7 @@ png("figs/carbonYrMaps.png", res = 300, units = 'in', height = 5, width = 7.2*3/
     layout(cbind(1:6, 7:12, 13:18), heights = c(rep(1, 5), 0.3))
     par(mar = rep(0, 4), oma = c(0, 0, 2, 0))
 
-    plotMaps <- function(r, cols, limits, scale = 1, years =  2016:2020) {
+    plotMaps <- function(r, cols, limits, scale = 1, years =  2015:2019) {
         mask = raster::crop(mask, r)
         r[mask] = NaN
         r = r * scale
@@ -76,7 +76,6 @@ png("figs/carbonYrMaps.png", res = 300, units = 'in', height = 5, width = 7.2*3/
     mtext('Fire emission' , outer = TRUE, adj = 0.67)
     
 dev.off()
-browser()
 }
 forCountry <- function(id, name) {
     #if (id == 5) browser()
@@ -115,17 +114,21 @@ forCountry <- function(id, name) {
     
     plot(range(fc[,1]), c(0, 1.1*max(fc[,2])), type = 'n', xlab = '', ylab = '', yaxs = 'i')
 
-    addBar <- function(xy, dx = 0.5, col = "#99DD77") 
-        polygon(xy[1] + dx * c(-1, 1, 1, -1, -1), xy[2] * c(0, 0, 1, 1, 0), col = col)
+    addBar <- function(xy, dx = 0.5, col = "#99DD77", ...) 
+        polygon(xy[1] + dx * c(-1, 1, 1, -1, -1), xy[2] * c(0, 0, 1, 1, 0), col = col, ...)
     
     nc[,2] = nc[,2] + dc[,2]
     sc = dc; sc[,2] = sc[,2] - rp[,2]
-
+    fc1 = fc
     apply(fc, 1, addBar, 0.5, carbCols[1])
+    fc1[-c(1, 8, 9),2] = 0
+    
+    apply(fc1, 1, addBar, 0.5, NULL, 10)
     apply(nc, 1, addBar, 0.5, carbCols[2])
     apply(dc, 1, addBar, 0.5, carbCols[3])
     apply(sc, 1, addBar, 0.5, carbCols[4])
     
+    fc[,2] = fc[,2] + nc[,2] + dc[,2] + sc[,2]
     dfc = cbind(fc[-1,1] - diff(fc[,1])/2, -diff(fc[,2]))
     
     rEM = range(c(dfc[,2], em[,2]))

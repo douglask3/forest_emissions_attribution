@@ -10,19 +10,20 @@ TC = convert_pacific_centric_2_regular(TC)
 #############
 ## gfas    ##
 #############
-if (F) {
+if (T) {
 file_emissions_gfas = 'data/raw/cams_gfas_co2fire_2003-2020-timestep_monthly-.nc'
 
 gfas = brick(file_emissions_gfas)
-gfas = raster::crop(gfas, extent)
 
-mnths = c(paste0('0', 1:9), 10:12)    
-nms =  paste0(mnths, '-', rep(years, each = 12))
+memSafeFile.initialise("temp/")
+gfas = gfas0 = layer.apply(gfas, memSafeFile.crop, extent, overwrite = TRUE)
+
+nms =  as.Date(paste(rep(years, 12), 1:12, 15, sep = '-'))
 gfas = gfas[[1:length(nms)]]
-names(gfas) = nms
+gfas = setZ(gfas, nms, 'Date')
 
 fname = paste0(out_dir, 'obs_fireEmissions.nc')
-gfas = writeRaster(gfas, fname, overwrite = TRUE)
+gfas = writeRaster.gitInfo(gfas, fname, overwrite = TRUE)
 }
 
 ###########

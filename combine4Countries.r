@@ -11,6 +11,7 @@ addSoilC = TRUE
 
 FC = brick('outputs/ForestCarbon-withHumans.nc')
 EM = brick('outputs/totalFireEmissions-withHumans.nc')
+TC = brick('outputs/cci_corrected-mod_withHuman_ForestCarbon_c_veg_1-2-3-4-5.nc')
 NC = brick("outputs/cci_corrected-mod_withHuman_NoneForestCarbon_c_veg_7-8-9-10-11-12-13.nc")
 DC = brick("outputs/cci_corrected-mod_withHuman_deadCarbon_cs_gb_1.nc")
 RP = brick("outputs/cci_corrected-mod_noHuman_DPM_cs_1.nc")
@@ -34,51 +35,63 @@ colsFC = c('#f7fcf5','#e5f5e0','#c7e9c0','#a1d99b','#74c476',
 dcolsFC = c('#543005','#8c510a','#bf812d','#dfc27d','#f6e8c3','#f5f5f5',
             '#c7eae5','#80cdc1','#35978f','#01665e','#003c30')
 limitsFC = c(0, 10, 100, 200, 300, 400, 500) * 10
+limitsFC = c(0, 50, 100, 150, 200, 250, 300, 350) * 100/2
 dlimitsFC = c(-100, -50, -20, -10, -5, -2, -1, 1, 2, 5, 10, 20, 50, 100) * 10
 
 colsEM = c('#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c',
            '#fc4e2a','#e31a1c','#bd0026','#800026')
 
 limitsEM = c(0, 0.1, 0.5, 1, 5, 10, 50, 100)
+limitsEM = c(0, 5, 10, 20, 50, 100, 200, 500, 1000)
 
-FCscale = 10
+FCscale = 100/2
 EMscale = 1000
 
 carbCols = c("#BBFF99", "#99DD77", "#77AA44")
 carbCols = c('#d9f0a3','#addd8e','#78c679','#41ab5d')
 
 if (F) {
-FC4plot = FC[[(nlayers(FC)-5):nlayers(FC)]]
-EM4plot = EM[[rev(seq(nlayers(EM), 1, by = -12)[1:5])]]
 
-diff.raster <- function(r) {
-    rout = r[[-1]]
-    for (i in 1:nlayers(rout)) 
-        rout[[i]] = rout[[i]] - r[[i]]
-    return(rout)
-}
-
-png("figs/carbonYrMaps.png", res = 300, units = 'in', height = 5, width = 7.2*3/2)
-    layout(cbind(1:6, 7:12, 13:18), heights = c(rep(1, 5), 0.3))
+plot3ColMaps <- function(fname, rs, rscales, limitss, colss,   titles) {
+    png(paste0("figs/", fname, ".png"), res = 300, units = 'in', height = 5*6.3/5.3, width = 7.2*3/2)
+    layout(cbind(1:7, 8:14, 15:21), heights = c(rep(1, 6), 0.3))
     par(mar = rep(0, 4), oma = c(0, 0, 2, 0))
 
-    plotMaps <- function(r, cols, limits, scale = 1, years =  2015:2019) {
+    plotMaps <- function(r, cols, limits, scale = 1, title, years =  2015:2019) {
         mask = raster::crop(mask, r)
         r[mask] = NaN
         r = r * scale
+        plotStandardMap(mean(r), 'Mean', limits = limits, cols = cols)
+        mtext(title, side = 3)
         mapply(plotStandardMap, layers2list(r), years,
                MoreArgs = list(limits = limits, cols = cols))
-        StandardLegend(cols, limits, r[[1]], extend_max = TRUE, units = 'gC ~m-2~')
+        StandardLegend(cols, limits, r[[1]], extend_max = TRUE, units = 'gC ~m-2~',
+                      extend_min = c(FALSE, TRUE)[1 + (limits[1] < 0)])
     }
     #browser()
-    plotMaps(FC4plot[[-1]], colsFC, limitsFC, FCscale)
-    plotMaps(diff.raster(FC4plot), dcolsFC, dlimitsFC, FCscale)
-    plotMaps(EM4plot, colsEM, limitsEM, EMscale, years = '')
-    mtext('Biomass carbon', outer = TRUE, adj = 0.33)
-    mtext('Fire emission' , outer = TRUE, adj = 0.67)
+    mapply(plotMaps, rs, colss, limitss, rscales, titles, list(2015:2019, '', ''))
+    #plotMaps(FC4plot[[-1]], colsFC, limitsFC, FCscale)
+    #plotMaps(dFC4plot, dcolsFC, dlimitsFC, FCscale, years = '')
+    #plotMaps(EM4plot, colsEM, limitsEM, EMscale, years = '')
     
-dev.off()
+    #mtext(, outer = TRUE, adj = 0.25)
+    #mtext(, outer = TRUE, adj = 0.5)
+    #mtext( , outer = TRUE, adj = 0.75)
+    
+    dev.off()
 }
+FC4plot = TC[[(nlayers(TC)-5):nlayers(TC)]]
+dFC4plot = diff.raster(FC4plot)
+EM4plot = EM[[rev(seq(nlayers(EM), 1, by = -12)[1:5])]]
+plot3ColMaps('totFosC_and_EM', list(FC4plot[[-1]], dFC4plot, EM4plot), 
+                               list(FCscale, FCscale, EMscale),
+                               list(limitsFC, dlimitsFC, limitsEM),
+                               list(colsFC, dcolsFC, colsEM),
+                               c('Forest carbon', 'Change in forest carbon', 'Fire emission'))
+
+#FCs = 
+}
+
 forCountry <- function(id, name) {
     #if (id == 5) browser()
     mask = (!mask) & abs(ctry - id)<0.5
@@ -106,7 +119,7 @@ forCountry <- function(id, name) {
 
     tfile = paste0("temp/countryEmission-3", TCthreshold, '-', id, ".Rd")
     cfile = paste0("outputs/countryEmission", TCthreshold, '-', name, ".csv")
-    if (file.exists(tfile)) load(tfile)
+    if (file.exists(tfile) && F) load(tfile)
     else {
         em = totsCarbs(EM, EMscale)
         fc = totsCarbs(FC, FCscale)
@@ -153,7 +166,7 @@ forCountry <- function(id, name) {
     }
     addLine(em, 'red')
     addLine(dfc, 'blue')
-    
+     
     for (i in 1:5) {
         labels = round(seq(rEM[1], rEM[2], length.out = 6), i)
         labels = unique(labels)

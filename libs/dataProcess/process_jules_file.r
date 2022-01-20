@@ -56,7 +56,14 @@ process.jules.file <- function(file, level, varName) {
 	} else if(dim(dat)[2] == 12) {
             r = layer.apply(1:12, monthizeData, multiLayer)
         } else {
-            browser()
+            if (dim(dat)[3] == 12) {
+                #dat = aperm(dat, c(1, 3, 2))
+                r = layer.apply(1:12, monthizeData, multiLayer)
+            } else {
+                browser()
+            }
+            #    datA = apply(dat, c(1, 3), sum)
+            
         }
     } else r = sum(rasterFromXYZ(cbind(lon, lat, dat))[[level]])
         	

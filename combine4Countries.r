@@ -5,17 +5,30 @@ load("outputs/forestDef.Rd")
 
 yearsLinePlot = 2010:2020
 
-TCthreshold = 'Olson'
+TCthreshold = 0.05#'Olson'
 
 addSoilC = TRUE
 
-FC = brick('outputs/ForestCarbon-withHumans.nc')
-EM = brick('outputs/totalFireEmissions-withHumans.nc')
-TC = brick('outputs/cci_corrected-mod_withHuman_ForestCarbon_c_veg_1-2-3-4-5.nc')
-NC = brick("outputs/cci_corrected-mod_withHuman_NoneForestCarbon_c_veg_7-8-9-10-11-12-13.nc")
-DC = brick("outputs/cci_corrected-mod_withHuman_deadCarbon_cs_gb_1.nc")
-RP = brick("outputs/cci_corrected-mod_noHuman_DPM_cs_1.nc")
-
+brickQ <- function(file) {
+    print(file)
+    dat = brick(file)
+    nms = names(dat)
+    #browser()
+    if (max(dat[[1]][], na.rm = TRUE)<1000) return(dat)
+    qX = quantile(dat[[nlayers(dat)-1]], 0.95)
+    
+    dat = layer.apply(dat, function(i) {i[i>qX] = qX; i})
+    names(dat) = nms
+    dat
+}
+if (F){
+FC = brickQ('outputs/ForestCarbon-withHumans.nc')
+EM = brickQ('outputs/totalFireEmissions-withHumans.nc')
+TC = brickQ('outputs/cci_corrected-mod_withHuman_ForestCarbon_c_veg_1-2-3-4-5.nc')
+NC = brickQ("outputs/cci_corrected-mod_withHuman_NoneForestCarbon_c_veg_7-8-9-10-11-12-13.nc")
+DC = brickQ("outputs/cci_corrected-mod_withHuman_deadCarbon_cs_gb_1.nc")
+RP = brickQ("outputs/cci_corrected-mod_noHuman_DPM_cs_1.nc")
+}
 if (is.numeric(TCthreshold)) { 
     TC = raster('../jules_benchmarking/data/TreeCover.nc')/0.8
     TC = convert_pacific_centric_2_regular(TC)
@@ -95,10 +108,12 @@ plot3ColMaps('totFosC_and_EM', list(FC4plot[[-1]], dFC4plot, EM4plot),
 forCountry <- function(id, name) {
     #if (id == 5) browser()
     mask = (!mask) & abs(ctry - id)<0.5
-
+    maskS = mask
+    maskS[is.na(maskS)] = 0
+    maskS = which(maskS[]==1)
     totCarb <- function(i, mask, marea) {
         print("yay")
-        sum(i[mask] * marea, na.rm = TRUE)
+        sum(i[maskS] * marea, na.rm = TRUE)
     }
     totsCarbs <-function(r, scale) {
         
@@ -112,35 +127,51 @@ forCountry <- function(id, name) {
         
         mask = raster::crop(mask, extent(r[[1]]))
         marea = raster::area(mask)[mask]
-        
+                
         out = scale * unlist(layer.apply(r, totCarb, mask, marea))/1000000000
         return(cbind(date, out))
     }
 
     tfile = paste0("temp/countryEmission-3", TCthreshold, '-', id, ".Rd")
-    cfile = paste0("outputs/countryEmission", TCthreshold, '-', name, ".csv")
-    if (file.exists(tfile) && F) load(tfile)
+    #cfile = paste0("outputs/countryEmission", TCthreshold, '-', name, ".csv")
+    if (file.exists(tfile)) load(tfile)
     else {
         em = totsCarbs(EM, EMscale)
+        #em = sapply(1:10, function(yr) sum(em[seq((yr-1)*12 +1, 12*yr),2])) 
         fc = totsCarbs(FC, FCscale)
         nc = totsCarbs(NC, FCscale)
+        nc[2,2] = nc[1,2]
         dc = totsCarbs(DC, FCscale)
         rp = totsCarbs(RP, FCscale)
-
-        out = cbind(fc, nc[,2], rp[,2], dc[,2], em[,2])
-        colnames(out) = c('date', 'Tree live Carbon', 'none-tree live carbon', 'RPM', 
-                          'Dead/soil carbpn', 'Fire emissions')
-        write.csv(out, file = cfile)
+        
+        tcc = fc[,2] - nc[,2] - dc[,2]
+        #out = cbind(fc, tcc, nc[,2], rp[,2], dc[,2] - rp[,2], em)
+        #`=colnames(out) = c('date', 'Total carbon', 'Tree live carbon', 'GrassShrub live carbon', 'DPM', 
+        #                  'Dead/soil carbon', 'Fire emissions')
+        #write.csv(out, file = cfile)
         save(fc, nc, dc, rp, em, file = tfile)
     }
+    
     #dev.new()
-    plot(range(fc[,1]), c(0, 1.1*max(fc[,2])), type = 'n', xlab = '', ylab = '', yaxs = 'i')
-
+    
     addBar <- function(xy, dx = 0.5, col = "#99DD77", ...) 
         polygon(xy[1] + dx * c(-1, 1, 1, -1, -1), xy[2] * c(0, 0, 1, 1, 0), col = col, ...)
     
+    nc0 = nc
+    tc = fc; tc[,2] = tc[,2] - nc[,2] - dc[,2]   
+
     nc[,2] = nc[,2] + dc[,2]
     sc = dc; sc[,2] = sc[,2] - rp[,2]
+
+    if (!addSoilC) {
+        fc[,2] = fc[,2] - sc[,2]
+        nc[,2] = nc[,2] - sc[,2]
+        dc[,2] = dc[,2] - sc[,2]
+        sc[,2] = 0
+    } 
+
+    plot(range(fc[1:9,1]), c(0, 1.1*max(fc[1:9,2])), type = 'n', xlab = '', ylab = '', yaxs = 'i')
+
     fc1 = fc
     apply(fc, 1, addBar, 0.5, carbCols[1])
     fc1[-c(1, 8, 9),2] = 0
@@ -148,14 +179,18 @@ forCountry <- function(id, name) {
     apply(fc1, 1, addBar, 0.5, NULL, 10)
     apply(nc, 1, addBar, 0.5, carbCols[2])
     apply(dc, 1, addBar, 0.5, carbCols[3])
-    if (addSoilC) apply(sc, 1, addBar, 0.5, carbCols[4])
-    else sc[,2] = 0
-
+    apply(sc, 1, addBar, 0.5, carbCols[4])
+    
     fc[,2] = fc[,2] + nc[,2] + dc[,2] + sc[,2]
     dfc = cbind(fc[-1,1] - diff(fc[,1])/2, -diff(fc[,2]))
+    if (pcEmission) {
+        em = em[sapply(fc[,1], function(i) which.min(abs(i - em[,1]))),]
+        em[,2] = 100*em[,2]/fc[,2]
+    }
     
+    #ems = sapply(list(fc, tc, nc0, rp, sc) function(i) em[,2]/i[,2])
     rEM = range(c(dfc[,2], em[,2]))
-    #rEM = range(em[,2])
+    if (pcEmission) rEM = range(em[,2])
     scaleFun <- function(y)  par("usr")[4] * (y - rEM[1])/(1.1*(rEM[2] - rEM[1]))
     
     addLine <- function(xy, col) {
@@ -165,7 +200,7 @@ forCountry <- function(id, name) {
         lines(x, y, lwd = 2, col = col)
     }
     addLine(em, 'red')
-    addLine(dfc, 'blue')
+    if (!pcEmission) addLine(dfc, 'blue')
      
     for (i in 1:5) {
         labels = round(seq(rEM[1], rEM[2], length.out = 6), i)
@@ -179,11 +214,13 @@ forCountry <- function(id, name) {
 }
 
 FUN <- function(nme) {
-png(nme, height = 7.2, width = 7.2, res = 300,  units = 'in')
-    par(mfrow = c(3, 2), mar = rep(2, 4), oma = c(0, 2,0, 2))
+png(nme, height = 7.2*3/3, width = 7.2*3/2, res = 300,  units = 'in')
+    par(mfrow = c(3, 3), mar = rep(2, 4), oma = c(0, 2,0, 2))
     mapply(forCountry, 1:length(cntryNames), names(cntryNames))
     mtext(outer = TRUE, side = 2, 'Forest carbon (Pg)', line = 0.3)
-    mtext(outer = TRUE, side = 4, 'Fire emissions/carbon loss (Pg/yr)', line = 0.3)
+    if(pcEmission) lab = 'Fire emissions (% forest carbon)'
+    else lab = 'Fire emissions/carbon loss (Pg/yr)'
+mtext(outer = TRUE, side = 4, lab, line = 0.3)
 
     plot.new()
     labs = c('Tree carbon', 'Grass/Shrub carbon', 'DPM')
@@ -200,8 +237,15 @@ png(nme, height = 7.2, width = 7.2, res = 300,  units = 'in')
            pch = pch, col = c(carbCols, 'blue', 'red'), lty = lty, lwd = lwd, pt.cex  = cex)
 dev.off()
 }
-
-FUN("figs/CountryTS.png")
+pcEmission = FALSE
+#FUN("figs/CountryTS.png")
 addSoilC = FALSE
-FUN("figs/CountryTS-noSoilC.png")
+FUN("figs/CountryTS-noSoilC.png")##
+pcEmission = TRUE
+
+addSoilC = TRUE
+FUN("figs/CountryTS-pcEm.png")
+addSoilC = FALSE
+FUN("figs/CountryTS-noSoilC-pcEm.png")
+
 

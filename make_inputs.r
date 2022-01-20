@@ -8,8 +8,7 @@ out_dir = "data/modInputs/"
 TC = raster('../jules_benchmarking/data/TreeCover.nc')
 TC = convert_pacific_centric_2_regular(TC)
 
-grab_cache = FALSE
-
+grab_cache = TRUE
 
 gfas_fname = paste0(c(out_dir, 'obs_fireEmissions-', range(years), '.nc'), collapse = '')
 file_emissions_gfas = 'data/raw/cams_gfas_co2fire_2003-2020-timestep_monthly-.nc'
@@ -31,29 +30,32 @@ if (file.exists(gfas_fname) && grab_cache) {
 
     gfas = writeRaster.gitInfo(gfas, gfas_fname, overwrite = TRUE)
 }
+
 ###########
 ## GFED  ##
 ###########
-if (F) {
+if (T) {
 gfed_dir = "data/gfed4.1s_nc/"
 files = list.files(gfed_dir)
 
 openResample <- function(file) {
+    fname = paste0(out_dir, "obs_", file)
+    
+    if (file.exists(fname) && grab_cache) return(brick(fname))
     print(file)
-    browser()
+    
     dat = brick(paste0(gfed_dir, '/', file))
     dat = raster::crop(dat, extent)
     dat = raster::resample(dat, gfas[[1]])
     dat[dat<0] = 0
-    names(dat) = years[1:nlayers(dat)]
-
-    fname = paste0(out_dir, "obs_", file)
+    names(dat) = years[1:nlayers(dat)]    
     writeRaster(dat, fname, overwrite = TRUE)
     return(dat)
 }
 
-dats = sapply(files, openResample)
+dats = sapply(files[1:2], openResample)
 }
+
 #############
 ## biomass ##
 #############
@@ -111,6 +113,7 @@ forVarMod <- function(var, levels, vname, scale, correct = NULL, mod, name) {
     fname = paste0(levels, collapse = '-')
     fname = paste0(out_dir, "mod_", name, '_', vname, '_', var, '_', fname, ".nc")
     print(fname)
+    if (is.na(max(dat[[1]][], na.rm = TRUE))) browser()
     dat = writeRaster.gitInfo(dat, fname, overwrite = TRUE)
 }
 
@@ -119,6 +122,21 @@ RunJules <- function()
                                  corrects, i, j), 
            jules_run, names(jules_run))
 
+
+
+jules_pattern = 'S2.Annual'
+
+jules_vars = c("c_veg", "c_veg", "cs_gb", "cs")
+names = paste0(c("ForestCarbon", "NoneForestCarbon", "deadCarbon", "DPM"), "-noLU")
+jules_vars_scale = c(1, 1, 1, 1)
+levels = list(1:5, 7:13, 1, 1)
+corrects = list(NULL, NULL, NULL, NULL)
+#RunJules()
+
+jules_pattern = 'S3.Annual'
+names = paste0(c("ForestCarbon", "NoneForestCarbon", "deadCarbon", "DPM"), "-LU")
+#RunJules()
+
 jules_pattern = 'S2.Annual'
 
 jules_vars = c("c_veg", "c_veg", "cs_gb", "cs")
@@ -126,7 +144,7 @@ names = c("ForestCarbon", "NoneForestCarbon", "deadCarbon", "DPM")
 jules_vars_scale = c(1, 1, 1, 1)
 levels = list(1:5, 7:13, 1, 1)
 corrects = list(TC, 1 - TC, NULL, NULL)
-RunJules()
+#RunJules()
 
 
 
@@ -134,7 +152,14 @@ jules_vars = c("cs", "cs_gb", "cv")
 names = c("DPM", "deadCarbon", "vegCarbon")
 jules_vars_scale = c(1, 1, 1)
 levels = c(1, 1, 1)
-corrects = c(NULL)
+corrects = list(NULL, NULL, NULL)
+#RunJules()
+
+jules_pattern = 'S3.ilamb'
+jules_vars = c("burnt_area_gb")
+jules_vars_scale = c(sec2year)
+levels = c(1)
+names = jules_vars
 RunJules()
 
 jules_pattern = 'S3.ilamb'
@@ -142,6 +167,48 @@ jules_vars = c("veg_c_fire_emission_gb", "burnt_carbon_dpm", "burnt_carbon_rpm")
 jules_vars_scale = c(sec2year, sec2year, sec2year)
 levels = c(1, 1, 1)
 names = jules_vars
+#RunJules()
 
+jules_pattern = 'S3.ilamb'
+jules_vars = c("t1p5m_gb", "smc_tot", "runoff")
+jules_vars_scale = c(1, 1, sec2year)
+levels = c(1, 1, 1)
+names = jules_vars
+#RunJules()
+
+jules_pattern = 'S3.Monthly'
+jules_vars = c("fch4_wetl")
+jules_vars_scale = c(1)
+levels = c(1)
+names = jules_vars
+#RunJules()
+
+
+jules_pattern = 'S3.ilamb'
+jules_vars = c("frac")
+jules_vars_scale = c(1)
+levels = list(1:5, 7:13)
+names = c("TreeCover", "nonTreeCover")
+#RunJules()
+
+jules_pattern = 'S2.ilamb'
+jules_vars = c("frac")
+jules_vars_scale = c(1)
+levels = list(1:5, 7:13)
+names = c("TreeCover_noLU", "nonTreeCover_noLU")
+#RunJules()
+
+
+
+jules_pattern = 'S3.ilamb'
+jules_vars = c("npp_gb", "resp_s_to_atmos_gb")
+jules_vars_scale = c(sec2year, sec2year)
+levels = c(1, 1)
+names = c("npp_gb-LU", "resp_s_to_atmos_gb-LU")
+#RunJules()
+
+jules_pattern = 'S2.ilamb'
+names = c("npp_gb-noLU", "resp_s_to_atmos_gb-noLU")
+#RunJules()
 
 

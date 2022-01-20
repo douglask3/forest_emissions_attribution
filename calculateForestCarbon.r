@@ -81,12 +81,12 @@ CorrectForGridCell <- function(i, id, modVeg, returnRes = TRUE) {
 }
 
 index = 1:length(mask)#272000#
-#out = mapply(CorrectForGridCell, mask[index], index,
-#             MoreArgs = list(mods,  returnRes = FALSE))
-#out = mapply(CorrectForGridCell, mask[index], index, MoreArgs = list(mods))
-#
-#out = out[!sapply(out, is.null)]
-#out[[length(out)]] =  out[[length(out)]][,!is.na(out[[length(out)]][1,])]
+out = mapply(CorrectForGridCell, mask[index], index,
+             MoreArgs = list(mods,  returnRes = FALSE))
+out = mapply(CorrectForGridCell, mask[index], index, MoreArgs = list(mods))
+
+out = out[!sapply(out, is.null)]
+out[[length(out)]] =  out[[length(out)]][,!is.na(out[[length(out)]][1,])]
 corrV= do.call(cbind, out)
 
 corrected = mods[[1]]
@@ -99,10 +99,9 @@ rasterizeCorrection <- function(i) {
     tfile = paste0("temp/calForestCorrecetedVar-liveVeg", i, ".nc")
     print(tfile)
     if (file.exists(tfile)) return(raster(tfile))
-    #browser()
+    
     corrected[mask[index]] = as.numeric(corrV[i,])
-    #browser()
-    #corrected[corrected>200] = 200 
+    
     corrected = writeRaster(corrected, file = tfile)
     return(corrected)
 }
@@ -135,6 +134,7 @@ forMods <- function(mods, nm, fnames) {
     
     
     writeRaster.gitInfo.Dates <- function(r, ...) {
+       
         r = setZ(r, as.Date(nms), 'Date')  
         writeRaster.gitInfo(r, ..., overwrite = TRUE)
     }

@@ -2,8 +2,9 @@ source("libs/return_multiple_from_functions.r")
 library(mapproj)
 
 plotStandardMap <- function(x, txt = '', limits, cols, e = NULL, recrop_e = TRUE, 
-                            y_range = c(-35, 35), x_range = c(-125, 155), limits_error = c(0.05, 0.1),
-                            ePatternRes = 15,  ePatternThick = 0.6, ...) {
+                            y_range = c(-35, 35), x_range = c(-125, 155), 
+                            limits_error = c(0.05, 0.1),
+                            ePatternRes = 15,  ePatternThick = 0.6, cntrThinkness = 5, ...) {
     if (nlayers(x) == 1) x = x[[1]]
     mask = raster('data/seamask.nc')
     mask = raster::resample(mask, x)
@@ -36,7 +37,7 @@ plotStandardMap <- function(x, txt = '', limits, cols, e = NULL, recrop_e = TRUE
                             coast.lwd = NULL, add = TRUE, ...)
     cntr = raster('outputs/HighlightCountries.nc')
     
-    for (i in 1:5) 
+    for (i in seq(1, cntrThinkness, 0.1)) 
         contour(cntr, add = TRUE, drawlabels = FALSE, lwd = 0.5, levels = i - 0.5)
     #contour(mask, add = TRUE, drawlabels = FALSE, lwd = 0.5)
     for (i in c(-1, 1))

@@ -4,8 +4,12 @@ library(rgdal)
 
 cntryNames = c(Bolivia = 'Bolivia', Brazil = 'Brazil',
                "DR Congo" = 'Democratic Republic of the Congo',
-               Indonesia = 'Indonesia', Paraguay = 'Paraguay')
+               Indonesia = 'Indonesia', Paraguay = 'Paraguay',
+               Malaysia = 'Malaysia', 'Kenya' = 'Republic of Kenya')
 
+cntryNames = c(Brazil = 'Brazil', Bolivia = 'Bolivia', Paraguay = 'Paraguay',
+               Indonesia = 'Indonesia',
+               Malaysia = 'Malaysia', 'Kenya' = 'Republic of Kenya')
 
 FC_file = 'outputs/ForestCarbon-withHumans.nc'
 ctry_file = 'data/WB_countries_Admin0_10m/'
